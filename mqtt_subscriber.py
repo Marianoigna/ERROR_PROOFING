@@ -41,7 +41,7 @@ import paho.mqtt.client as mqtt
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
 MQTT_BROKER   = 'broker.emqx.io'     # Broker público EMQX — sin registro
-MQTT_PORT     = 1883
+MQTT_PORT     = 8084                 # Puerto WebSocket SSL (WSS)
 MQTT_TOPIC    = 'temperatura_prueba' # Topic que escucha este subscriber
 MQTT_USER     = ''                   # Sin autenticación en broker público
 MQTT_PASSWORD = ''
@@ -90,7 +90,8 @@ def on_message(client, userdata, msg):
 
 
 def main():
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, transport='websockets')
+    client.tls_set()  # SSL requerido para puerto 8084 (WSS)
 
     if MQTT_USER:
         client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
