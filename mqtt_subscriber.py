@@ -1,15 +1,38 @@
 """
 mqtt_subscriber.py
 ==================
-Escucha un broker MQTT y reenvía cada lectura de temperatura
-a la API REST de Django, que la guarda en SQLite3 y notifica
-via WebSocket a todos los clientes conectados.
+Se conecta al broker MQTT público de EMQX (broker.emqx.io),
+escucha el topic 'temperatura_prueba' en el puerto 1883
+y reenvía cada lectura a la API REST de Django para que
+se guarde en SQLite3 y se actualice en tiempo real vía WebSocket.
+
+──────────────────────────────────────────────────────────────
+CONFIGURACIÓN EN MQTTX (aplicación de escritorio):
+──────────────────────────────────────────────────────────────
+  1. Nueva conexión:
+       - Host:     broker.emqx.io
+       - Port:     1883
+       - Protocol: MQTT
+       - Client ID: (cualquiera, ej: mqttx_test_01)
+       - Sin usuario ni contraseña
+
+  2. Publicar mensaje:
+       - Topic:   temperatura_prueba
+       - QoS:     0
+       - Payload (elige uno de estos formatos):
+
+           Formato simple (solo número):
+               25.3
+
+           Formato JSON (recomendado):
+               {"sensor_id": "sensor_01", "valor": 25.3}
+
+  3. Asegúrate de que mqtt_subscriber.py esté corriendo
+     antes de publicar desde MQTTX.
+──────────────────────────────────────────────────────────────
 
 Uso:
     python mqtt_subscriber.py
-
-Configuración:
-    Edita las variables de la sección CONFIG según tu entorno.
 """
 
 import json
@@ -17,14 +40,14 @@ import requests
 import paho.mqtt.client as mqtt
 
 # ── CONFIG ────────────────────────────────────────────────────────────────────
-MQTT_BROKER   = 'localhost'       # IP o hostname del broker MQTT (ej. Mosquitto)
-MQTT_PORT     = 1883
-MQTT_TOPIC    = 'sensores/temperatura'
-MQTT_USER     = ''                # dejar vacío si no hay autenticación
+MQTT_BROKER   = 'broker.emqx.io'     # Broker público EMQX — sin registro
+MQTT_PORT     = 8084                 # Puerto WebSocket SSL (WSS)
+MQTT_TOPIC    = 'temperatura_prueba' # Topic que escucha este subscriber
+MQTT_USER     = ''                   # Sin autenticación en broker público
 MQTT_PASSWORD = ''
 
 API_URL       = 'http://127.0.0.1:8000/api/temperatura/'
-SENSOR_ID     = 'sensor_01'
+SENSOR_ID     = 'sensor_01'          # ID por defecto si el payload no lo incluye
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -67,7 +90,8 @@ def on_message(client, userdata, msg):
 
 
 def main():
-    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, transport='websockets')
+    client.tls_set()  # SSL requerido para puerto 8084 (WSS)
 
     if MQTT_USER:
         client.username_pw_set(MQTT_USER, MQTT_PASSWORD)
