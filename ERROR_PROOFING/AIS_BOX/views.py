@@ -46,5 +46,9 @@ class TemperaturaAPIView(APIView):
 
 def dashboard(request):
     """Página principal con el valor de temperatura en tiempo real."""
-    ultima = Temperatura.objects.first()
-    return render(request, 'AIS_BOX/dashboard.html', {'ultima': ultima})
+    ultimos = Temperatura.objects.all()[:5]
+    ultima = ultimos[0] if ultimos else None
+    return render(request, 'AIS_BOX/dashboard.html', {
+        'ultima': ultima,
+        'ultimos': list(reversed(list(ultimos))),  # cronológico para el gráfico
+    })

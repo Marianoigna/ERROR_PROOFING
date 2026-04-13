@@ -18,6 +18,33 @@
             min-height: 100vh;
         }
 
+        .panel {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 1.5rem;
+        }
+
+        .card-grafico {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 340px;
+        }
+
+        .card-grafico h3 {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: #484f58;
+            margin-bottom: 1.2rem;
+            text-transform: uppercase;
+        }
+
         h1 {
             font-size: 1.4rem;
             letter-spacing: 3px;
@@ -116,6 +143,7 @@
 
 <h1>AIS BOX — Error Proofing</h1>
 
+<div class="panel">
 <div class="card">
     <div class="sensor-label" id="sensor-id">SENSOR_01</div>
 
@@ -145,7 +173,60 @@
     </div>
 </div>
 
+<div class="card-grafico">
+    <h3>Últimas 5 lecturas</h3>
+    <canvas id="grafico-temp" width="300" height="260"></canvas>
+</div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+    // ── Datos iniciales desde Django ─────────────────────────────────────────
+    const initLabels = [{% for r in ultimos %}"{{ r.timestamp|date:'H:i:s' }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+    const initData   = [{% for r in ultimos %}{{ r.valor }}{% if not forloop.last %},{% endif %}{% endfor %}];
+
+    // ── Chart.js ─────────────────────────────────────────────────────────────
+    const ctx = document.getElementById('grafico-temp').getContext('2d');
+    const grafico = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: initLabels,
+            datasets: [{
+                label: 'Temperatura (°C)',
+                data: initData,
+                borderColor: '#58a6ff',
+                backgroundColor: 'rgba(88,166,255,0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: '#58a6ff',
+                pointRadius: 5,
+                tension: 0.3,
+                fill: true,
+            }]
+        },
+        options: {
+            animation: { duration: 400 },
+            scales: {
+                x: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } },
+                y: { ticks: { color: '#8b949e' }, grid: { color: '#21262d' } }
+            },
+            plugins: {
+                legend: { labels: { color: '#8b949e' } }
+            }
+        }
+    });
+
+    function agregarPuntoGrafico(valor, timestamp) {
+        const hora = new Date(timestamp).toLocaleTimeString();
+        grafico.data.labels.push(hora);
+        grafico.data.datasets[0].data.push(valor);
+        if (grafico.data.labels.length > 5) {
+            grafico.data.labels.shift();
+            grafico.data.datasets[0].data.shift();
+        }
+        grafico.update();
+    }
+
     const wsUrl = `ws://${window.location.host}/ws/temperatura/`;
     let socket;
 
@@ -177,6 +258,9 @@
             const lista = document.getElementById('historico-lista');
             lista.insertBefore(li, lista.firstChild);
             if (lista.children.length > 20) lista.removeChild(lista.lastChild);
+
+            // Actualizar gráfico
+            agregarPuntoGrafico(data.valor, data.timestamp);
         };
 
         socket.onclose = () => {
