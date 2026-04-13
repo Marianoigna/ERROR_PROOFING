@@ -31,12 +31,15 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',                              # ASGI server — debe ir primero
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',                      # Django REST Framework
+    'channels',                            # WebSockets
     'AIS_BOX',
 ]
 
@@ -68,6 +71,16 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'ERROR_PROOFING.wsgi.application'
+
+# ASGI + Channels
+ASGI_APPLICATION = 'ERROR_PROOFING.asgi.application'
+
+# Channel Layers — InMemory para desarrollo (usar Redis en producción)
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels.layers.InMemoryChannelLayer',
+    }
+}
 
 
 # Database
@@ -116,3 +129,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+# Django REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.AllowAny',
+    ]
+}
